@@ -39,9 +39,11 @@ class Server:
 
             request = json.loads(decrypted_data.decode('utf-8'))
             print('\t\t{}: recebeu requisição \'{}\'.\n'.format(thread_name, request))
+
             if request['action'] == communication.ACTIONS[0]:
                 print('\t\t{}: {} quer se logar.\n'.format(thread_name, request['user']['user_name']))
                 res = self.authenticate_login(request['user'])
+
                 if res == 'LOG_SUCCESS':
                     self.send_user_files(request['user']['user_name'], client_connection)
                 else:

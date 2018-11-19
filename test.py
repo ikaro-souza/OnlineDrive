@@ -15,7 +15,6 @@ def run_test(tests: Queue):
 
 if __name__ == '__main__':
     test_clients = Queue()
-
     for i in range(10):
         user_name = ''.join(sample(ascii_letters, randint(5, 15)))
         password = ''.join(sample(ascii_letters + digits, randint(5, 15)))
@@ -30,7 +29,7 @@ if __name__ == '__main__':
 
     c1 = Client('test_client_11')
     c1_req = {
-        'user': {"user_name": "vrsWFnYo", "pass": "ls74z1eRIX"},
+        'user': {"user_name": "teste_arquivos", "pass": "testpasss"},
         'action': communication.ACTIONS[0]
     }
 

@@ -64,4 +64,4 @@ class Client:
                 self.sock.sendall(json.dumps({'message': 'CONFIRM'}).encode('utf-8'))
                 break
 
-        print('{}: Dados recebidos'.format(self.name))
+        print('{}: Dados recebidos \'{}\''.format(self.name, total_data))
