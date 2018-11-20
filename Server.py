@@ -9,11 +9,8 @@ from threading import Thread, current_thread, local, Lock
 class Server:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # self.users_database_access_requests = Queue()
-        # self.users_database_access_handler = Thread(target=self.handle_user_database_access)
         self.users_database_access_lock = Lock()
         self.file_transfer_requests = Queue()
-        # self.file_transfer_listener = Thread(target=self.send_user_files)
 
     def setup_socket(self):
         self.sock.bind(communication.SERVER_ADDRESS)
@@ -21,7 +18,6 @@ class Server:
 
     def start_server(self):
         self.setup_socket()
-        # self.file_transfer_listener.start()
 
         while True:
             print('Main-Thread: Aguardando conexão...\n')
@@ -36,9 +32,7 @@ class Server:
         while True:
             data = client_connection.recv(communication.BUFFSIZE)
             decrypted_data = self.decrypt(data)
-
             request = json.loads(decrypted_data.decode('utf-8'))
-            print('\t\t{}: recebeu requisição \'{}\'.\n'.format(thread_name, request))
 
             if request['action'] == communication.ACTIONS[0]:
                 print('\t\t{}: {} quer se logar.\n'.format(thread_name, request['user']['user_name']))
@@ -50,6 +44,7 @@ class Server:
                     client_connection.sendall(json.dumps({'message': res}).encode('utf-8'))
 
             elif request['action'] == communication.ACTIONS[1]:
+                print('\t\t{}: {} quer se cadastrar.\n'.format(thread_name, request['user']['user_name']))
                 res = self.register(request['user'])
                 client_connection.sendall(json.dumps({'message': res}).encode('utf-8'))
 
@@ -63,6 +58,7 @@ class Server:
 
     def authenticate_login(self, user: dict):
         thread_name = current_thread().name
+        
         with self.users_database_access_lock:
             print('\t\t{}: Autenticando login de {}\n'.format(thread_name, user['user_name']))
             registered_users = self.get_registered_users()
@@ -170,13 +166,17 @@ class Server:
 
     @staticmethod
     def get_registered_users():
+        """
+            Tenta abrir o arquivo em modo de leitura, caso não consiga, o arquivo com uma lista vazia.
+            Retorna uma lista vazia ou com os usuários cadastrados.
+        """
         thread_name = current_thread().name
         print('\t\t{}: Acessando banco de dados de usuários.\n'.format(thread_name))
         try:
             with open('registered_users.json') as file:
                 users = json.load(file)
                 file.close()
-                print('\t\t{}: Sucesso ao acessar banco, retornando lista de usuários...\n'.format(thread_name))
+                print('\t\t{}: Retornando lista de usuários...\n'.format(thread_name))
                 return users
         except FileNotFoundError:
             print('\t\t{}: Banco de dados não existe, criando banco...\n'.format(thread_name))
