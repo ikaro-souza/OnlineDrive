@@ -1,10 +1,11 @@
 from App import App
-from Views.LoginView import LoginView
+
+from Client.Views.LoginView import LoginView
 
 
 class Controller:
     def __init__(self, app: App):
-        # Referencia a view pela qual este controlador é responsável
+        # Referencia à view pela qual este controlador é responsável
         self.view = LoginView(self, app)
         self.app = app
 

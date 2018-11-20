@@ -1,7 +1,9 @@
 from tkinter import *
 from tkinter.font import Font
+
 from App import App
-from Views import LoginViewController
+
+from Client.Views import LoginViewController
 
 
 class LoginView(Frame):

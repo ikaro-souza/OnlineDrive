@@ -1,9 +1,9 @@
-import socket
 import json
 import os
-import communication
+import socket
 from queue import Queue
-from threading import Thread, current_thread, local, Lock
+from threading import Thread, current_thread, Lock
+from ServerSide import communication
 
 
 class Server:
@@ -32,7 +32,7 @@ class Server:
         while True:
             data = client_connection.recv(communication.BUFFSIZE)
             decrypted_data = self.decrypt(data)
-            request = json.loads(decrypted_data.decode('utf-8'))
+            request = json.loads(decrypted_data.decode())
 
             if request['action'] == communication.ACTIONS[0]:
                 print('\t\t{}: {} quer se logar.\n'.format(thread_name, request['user']['user_name']))
@@ -41,12 +41,12 @@ class Server:
                 if res == 'LOG_SUCCESS':
                     self.send_user_files(request['user']['user_name'], client_connection)
                 else:
-                    client_connection.sendall(json.dumps({'message': res}).encode('utf-8'))
+                    client_connection.sendall(json.dumps({'message': res}).encode())
 
             elif request['action'] == communication.ACTIONS[1]:
                 print('\t\t{}: {} quer se cadastrar.\n'.format(thread_name, request['user']['user_name']))
                 res = self.register(request['user'])
-                client_connection.sendall(json.dumps({'message': res}).encode('utf-8'))
+                client_connection.sendall(json.dumps({'message': res}).encode())
 
             elif request['action'] == communication.ACTIONS[2]:
                 client_connection.close()
@@ -100,62 +100,30 @@ class Server:
         user_dir = self.get_user_dir(user_name)
         thread_name = current_thread().name
 
-        try:
-            for root, dirs, files in os.walk(user_dir):
-                print('\t\t{}: Informando ao cliente sobre que o servidor irá enviar seus arquivos...\n'.format(
-                    thread_name
-                ))
+        print('\t\t{}: Enviando arquivos do usuário...\n'.format(thread_name))
+        connection.sendall(json.dumps({'message': 'RECV_FILES'}).encode())
 
-                res = connection.sendall(json.dumps({'message': 'RECV_FILES'}).encode('utf-8'))
+        print('\t\t{}: Esperando confirmação...\n'.format(thread_name))
+        connection.recv(communication.BUFFSIZE)
 
-                print('\t\t{}: Aguardando confirmação do cliente...\n'.format(thread_name))
-                connection.recv(communication.BUFFSIZE)
+        for root, dirs, files in os.walk(user_dir):
+            if files:
+                for file_name in files:
+                    print('\t\t{}: Enviando nome do arquivo...\n'.format(thread_name))
+                    connection.sendall(json.dumps({'file_name': file_name}).encode())
+                    file_path = os.path.join(root, file_name)
 
-                if files:
-                    file_names = []
-                    for file_name in files:
-                        file_names.append(file_name)
+                    with open(file_path, 'rb') as file:
+                        while True:
+                            data = file.read(communication.BUFFSIZE)
 
-                        # print('\t\t{}: Preparando arquivo para envio...\n'.format(thread_name))
-                        #
-                        # file_path = os.path.join(root, file_name)
-                        #
-                        # file_data = bytes()
-                        #
-                        # with open(file_path, 'rb') as f:
-                        #     data_read = f.read(4096)
-                        #
-                        #     while data_read:
-                        #         file_data += data_read
-                        #         data_read = f.read(4096)
-                        #
-                        #     f.close()
-                        #
-                        # print('\t\t{}: Enviando nome do arquivo...\n'.format(thread_name))
-                        # connection.sendall(json.dumps({'file_name': file_name}).encode('utf-8'))
-                        #
-                        # print('\t\t{}: Aguardando confirmação...\n'.format(thread_name))
-                        # connection.recv(communication.BUFFSIZE)
-                        #
-                        # print('\t\t{}: Enviando os dados do arquivos...\n'.format(thread_name))
-                        # connection.sendall(file_data)
-                        #
-                        # print('\t\t{}: Aguardando confirmação...\n'.format(thread_name))
-                        # connection.recv(communication.BUFFSIZE)
+                            if not data:
+                                break
 
-                    res = connection.sendall(json.dumps(file_names).encode('utf-8'))
-                    if res is None:
-                        print('\t\t{}: Arquivos enviados.\n'.format(thread_name))
-                        res = 'ALL_SENT'
-                else:
-                    print('\t\t{}: O usuário não possui nenhum arquivo no servidor.\n'.format(thread_name))
-                    res = 'NO_FILES'
+                            connection.sendall(data)
 
-                connection.sendall(json.dumps({'message': res}).encode('utf-8'))
-        except Exception as err:
-            print(err)
-            connection.sendall(json.dumps({'message': str(err)}).encode('utf-8'))
-
+                        print('\t\t{}: Esperando confirmação...\n'.format(thread_name))
+                        connection.recv(communication.BUFFSIZE)
     @staticmethod
     def encrypt(data: bytes):
         return data

@@ -1,8 +1,7 @@
 import json
 import socket
-from json import JSONDecodeError
 
-import communication
+from ServerSide import communication
 
 
 class Client:

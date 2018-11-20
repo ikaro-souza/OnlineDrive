@@ -1,9 +1,11 @@
 from queue import Queue
-from TestClient import Client
-from string import ascii_letters, digits
 from random import *
-import communication
+from string import ascii_letters, digits
 from threading import Thread
+
+from TestClient import Client
+
+from ServerSide import communication
 
 
 def run_test(tests: Queue):

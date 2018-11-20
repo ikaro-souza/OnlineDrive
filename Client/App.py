@@ -1,12 +1,12 @@
 import json
+import os
 import socket
 from json import JSONDecodeError
 from threading import Thread
-from tkinter import messagebox, BooleanVar, Frame
 from tkinter import Tk
-
-import communication
-from Views import LoginViewController
+from tkinter import messagebox, BooleanVar, Frame
+from Client.Views import LoginViewController
+from ServerSide import communication
 
 
 class App(Tk):
@@ -32,14 +32,14 @@ class App(Tk):
         # Abre um pop-up para confirmar se o usuário realmente deseja fechar a aplicação
         if messagebox.askquestion('Quit', 'Você deseja mesmo sair?') == 'yes':
             # Manda uma mensagem para o servidor informando-o para desconectar o cliente
-            self.sock.sendall(json.dumps({'action': communication.ACTIONS[2]}).encode('utf-8'))
+            self.sock.sendall(json.dumps({'action': communication.ACTIONS[2]}).encode())
             self.sock.close()
             # Fecha a aplicação
             self.destroy()
 
     def send_request(self, request: dict):
         serialized_request = json.dumps(request)
-        Thread(target=self.sock.sendall, args=(serialized_request.encode('utf-8'),)).start()
+        Thread(target=self.sock.sendall, args=(serialized_request.encode(),)).start()
 
     def get_server_response(self):
         while True:
@@ -48,36 +48,39 @@ class App(Tk):
             while True:
                 data_received = self.sock.recv(communication.BUFFSIZE)
 
-                if (not data_received) or len(data_received) < communication.BUFFSIZE:
+                if not data_received or len(data_received) < communication.BUFFSIZE:
                     total_data += data_received
                     break
-                else:
-                    total_data += data_received
+
+                total_data += data_received
 
             try:
-                decoded_data = total_data.decode('utf-8')
+                decoded_data = total_data.decode()
                 response = json.loads(decoded_data)
-
                 print('response:', response)
 
                 if response['message'] == 'RECV_FILES':
                     self.user_logged.set(True)
-                    self.send_request({'message': 'CONFIRM'})
-                    total_data = bytes()
-
-                    while True:
-                        data_received = self.sock.recv(communication.BUFFSIZE)
-
-                        if (not data_received) or len(data_received) < communication.BUFFSIZE:
-                            total_data += data_received
-                            break
-                        else:
-                            total_data += data_received
-
-                    print('response:', json.loads(total_data.decode('utf-8')))
+                    self.sock.sendall('ok'.encode())
+                    self.recv_files()
 
             except (UnicodeDecodeError or JSONDecodeError) as err:
                 raise err
+
+    def recv_files(self):
+        while True:
+            file_name = json.loads(self.sock.recv(communication.BUFFSIZE).decode())['file_name']
+
+            with open(os.path.join('downloads', file_name), 'wb') as file:
+                while True:
+                    data = self.sock.recv(communication.BUFFSIZE)
+
+                    if not data:
+                        break
+
+                    file.write(data)
+
+                self.sock.sendall('ok'.encode())
 
     def user_state_changed(self, *args):
         if self.user_logged.get() is True:
