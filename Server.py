@@ -116,36 +116,38 @@ class Server:
                 connection.recv(communication.BUFFSIZE)
 
                 if files:
+                    file_names = []
                     for file_name in files:
-                        print('\t\t{}: Preparando arquivo para envio...\n'.format(thread_name))
+                        file_names.append(file_name)
 
-                        file_path = os.path.join(root, file_name)
-                        file_data = bytes()
+                        # print('\t\t{}: Preparando arquivo para envio...\n'.format(thread_name))
+                        #
+                        # file_path = os.path.join(root, file_name)
+                        #
+                        # file_data = bytes()
+                        #
+                        # with open(file_path, 'rb') as f:
+                        #     data_read = f.read(4096)
+                        #
+                        #     while data_read:
+                        #         file_data += data_read
+                        #         data_read = f.read(4096)
+                        #
+                        #     f.close()
+                        #
+                        # print('\t\t{}: Enviando nome do arquivo...\n'.format(thread_name))
+                        # connection.sendall(json.dumps({'file_name': file_name}).encode('utf-8'))
+                        #
+                        # print('\t\t{}: Aguardando confirmação...\n'.format(thread_name))
+                        # connection.recv(communication.BUFFSIZE)
+                        #
+                        # print('\t\t{}: Enviando os dados do arquivos...\n'.format(thread_name))
+                        # connection.sendall(file_data)
+                        #
+                        # print('\t\t{}: Aguardando confirmação...\n'.format(thread_name))
+                        # connection.recv(communication.BUFFSIZE)
 
-                        with open(file_path, 'rb') as f:
-                            data_read = f.read(4096)
-
-                            while data_read:
-                                file_data += data_read
-                                data_read = f.read(4096)
-
-                            f.close()
-
-                        print('\t\t{}: Enviando nome do arquivo...\n'.format(thread_name))
-                        connection.sendall(json.dumps({'file_name': file_name}).encode('utf-8'))
-
-                        print('\t\t{}: Aguardando confirmação...\n'.format(thread_name))
-                        connection.recv(communication.BUFFSIZE)
-
-                        print('\t\t{}: Enviando os dados do arquivos...\n'.format(thread_name))
-                        connection.sendall(file_data)
-
-                        # print('\t\t{}: Informando que todos os dados foram enviados...\n'.format(thread_name))
-                        # res = connection.sendall(json.dumps({'message': 'ALL_DATA_SENT'}).encode('utf-8'))
-
-                        print('\t\t{}: Aguardando confirmação...\n'.format(thread_name))
-                        connection.recv(communication.BUFFSIZE)
-
+                    res = connection.sendall(json.dumps(file_names).encode('utf-8'))
                     if res is None:
                         print('\t\t{}: Arquivos enviados.\n'.format(thread_name))
                         res = 'ALL_SENT'
