@@ -38,7 +38,8 @@ class Server:
                 print('\t\t{}: {} quer se logar.\n'.format(thread_name, request['user']['user_name']))
                 res = self.authenticate_login(request['user'])
 
-                if res == 'LOG_SUCCESS':
+                if res == communication.RESULTS[0]:
+                    client_connection.sendall(json.dumps({'message': res}).encode())
                     self.send_user_files(request['user']['user_name'], client_connection)
                 else:
                     client_connection.sendall(json.dumps({'message': res}).encode())
@@ -62,7 +63,7 @@ class Server:
         with self.users_database_access_lock:
             print('\t\t{}: Autenticando login de {}\n'.format(thread_name, user['user_name']))
             registered_users = self.get_registered_users()
-            return 'LOG_SUCCESS' if user in registered_users else 'LOG_FAIL'
+            return communication.RESULTS[0] if user in registered_users else communication.RESULTS[1]
 
     def register(self, user: dict):
         thread_name = current_thread().name
@@ -74,17 +75,19 @@ class Server:
             for registered_user in registered_users:
                 if user['user_name'] == registered_user['user_name']:
                     print('\t\t{}: {} já existe.\n'.format(thread_name, user['user_name']))
-                    return 'REG_FAIL'
+                    return communication.RESULTS[3]
 
             with open('registered_users.json', 'w') as f:
                 print('\t\t{}: Atualizando ao banco de dados de usuários.\n'.format(thread_name))
+
                 registered_users.append(user)
                 json.dump(registered_users, f, indent=2)
                 f.close()
-                print('\t\t{}: Usuário registrado.\n'.format(thread_name))
-                self.create_user_dir(user['user_name'])
 
-                return 'REG_SUCCESS'
+                print('\t\t{}: Usuário registrado.\n'.format(thread_name))
+
+                self.create_user_dir(user['user_name'])
+                return communication.RESULTS[2]
 
     def update_user_dir(self, user_name: str):
         pass
@@ -97,33 +100,32 @@ class Server:
         print('\t\t{}: Diretório criado.\n'.format(thread_name))
 
     def send_user_files(self, user_name: str, connection: socket.socket):
-        user_dir = self.get_user_dir(user_name)
         thread_name = current_thread().name
+        print('\t\t{}: Checking files for {}'.format(thread_name, connection.getsockname()))
 
-        print('\t\t{}: Enviando arquivos do usuário...\n'.format(thread_name))
-        connection.sendall(json.dumps({'message': 'RECV_FILES'}).encode())
-
-        print('\t\t{}: Esperando confirmação...\n'.format(thread_name))
-        connection.recv(communication.BUFFSIZE)
+        user_dir = self.get_user_dir(user_name)
 
         for root, dirs, files in os.walk(user_dir):
-            if files:
+            if not files:
+                print('\t\t{}: No files to send.'.format(thread_name))
+                connection.sendall(json.dumps({'message': communication.RESULTS[6]}).encode())
+            else:
+                print('\t\t{}: Sending files.'.format(thread_name))
                 for file_name in files:
-                    print('\t\t{}: Enviando nome do arquivo...\n'.format(thread_name))
+
+                    # Envia o nome do arquivo
+                    print('\t\t{}: Sending file name.'.format(thread_name))
                     connection.sendall(json.dumps({'file_name': file_name}).encode())
-                    file_path = os.path.join(root, file_name)
 
-                    with open(file_path, 'rb') as file:
-                        while True:
-                            data = file.read(communication.BUFFSIZE)
+                    # Envia os dados do arquivo
+                    with open(os.path.join(user_dir, file_name), 'rb') as file:
+                        print('\t\t{}: Sending file data.'.format(thread_name))
+                        file_data = file.read(communication.BUFFSIZE)
 
-                            if not data:
-                                break
+                        while file_data:
+                            connection.sendall(file_data)
+                            file_data = file.read(communication.BUFFSIZE)
 
-                            connection.sendall(data)
-
-                        print('\t\t{}: Esperando confirmação...\n'.format(thread_name))
-                        connection.recv(communication.BUFFSIZE)
     @staticmethod
     def encrypt(data: bytes):
         return data

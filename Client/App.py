@@ -14,6 +14,7 @@ class App(Tk):
         super().__init__()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(communication.SERVER_ADDRESS)
+        self.sock.setblocking(False)
         self.title('OnlineDrive - Welcome')
         # Informa à aplicação qual método chamar ao fechar.
         self.protocol('WM_DELETE_WINDOW', self.on_close)
@@ -43,44 +44,24 @@ class App(Tk):
 
     def get_server_response(self):
         while True:
-            total_data = bytes()
+            data = self.sock.recv(communication.BUFFSIZE)
+            response = json.loads(data.decode())
 
+            if 'file_name' in response:
+                # Recebe o nome do arquivo.
+                print('Received file name. Preparing to receive file data.')
+                self.recv_file_data(response['file_name'])
+            else:
+                if response == communication.RESULTS[0]:
+                    print('response:', response['message'])
+
+    def recv_file_data(self, file_name):
+        # Recebe os dados do arquivo.
+        with open(os.path.join('downloads', file_name), 'wb') as file:
             while True:
-                data_received = self.sock.recv(communication.BUFFSIZE)
-
-                if not data_received or len(data_received) < communication.BUFFSIZE:
-                    total_data += data_received
-                    break
-
-                total_data += data_received
-
-            try:
-                decoded_data = total_data.decode()
-                response = json.loads(decoded_data)
-                print('response:', response)
-
-                if response['message'] == 'RECV_FILES':
-                    self.user_logged.set(True)
-                    self.sock.sendall('ok'.encode())
-                    self.recv_files()
-
-            except (UnicodeDecodeError or JSONDecodeError) as err:
-                raise err
-
-    def recv_files(self):
-        while True:
-            file_name = json.loads(self.sock.recv(communication.BUFFSIZE).decode())['file_name']
-
-            with open(os.path.join('downloads', file_name), 'wb') as file:
-                while True:
-                    data = self.sock.recv(communication.BUFFSIZE)
-
-                    if not data:
-                        break
-
-                    file.write(data)
-
-                self.sock.sendall('ok'.encode())
+                print('Recebendo dados do arquivo.')
+                data = self.sock.recv(communication.BUFFSIZE)
+                file.write(data)
 
     def user_state_changed(self, *args):
         if self.user_logged.get() is True:

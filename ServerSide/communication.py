@@ -1,4 +1,4 @@
-SERVER_ADDRESS = ('localhost', 80)
+SERVER_ADDRESS = ('localhost', 1001)
 BUFFSIZE = 65536
 
 ACTIONS = [
@@ -6,4 +6,13 @@ ACTIONS = [
     'REG',
     'DISCONNECT',
     'UPDATE'
+]
+
+RESULTS = [
+    'LOG_SUCCESS',
+    'LOG_FAIL',
+    'REG_SUCCESS',
+    'REG_FAIL',
+
+
 ]
